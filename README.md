@@ -2,26 +2,26 @@
 
 Using pipenv as a dependency & virtual environment manager.
 
-To add new dependencies, use:
-
-```
-pipenv install package_name_here
-```
-
 Install all existing dependencies using:
 
 ```
 pipenv install
 ```
 
-Now you can access the environment shell with all the dependencies ready to go.
+Now you can run the script with the dependencies ready to go:
+
+```
+pipenv run python ssd.py
+```
+
+Or access the environment shell itself, and run commands from in there:
 
 ```
 pipenv shell
 ```
 
-Or use
+To add new dependencies, use:
 
 ```
-pipenv run python ssd.py
+pipenv install package_name_here
 ```
