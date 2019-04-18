@@ -5,6 +5,7 @@ import math
 from enum import Enum
 
 DEFAULT_TRACE_PATH = 'data/workloada_csv.csv'
+DEFAULT_TARGET_RATIO = 2
 
 class page_size(Enum):
     DEFAULT = 1
@@ -39,22 +40,14 @@ def compute_sector_write_counts(trace):
             sector_write_counts[sector] += 1 
     return sector_write_counts
 
-def compute_sector_partitions(trace, page_size):
-    # get and sort sector write counts
-    sector_counts = compute_sector_write_counts(trace)
-    sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
-
-    # init vars for partition generation loop
-    max_count = 0
-    for i in range(page_size):
-        max_count += sorted_counts[i][1]
+def create_partitions(sorted_counts, max_count, page_size, target_ratio):
 
     current_max = max_count
     dead_sectors_index = -1
     partitions = [[]]
 
     # go through page-size chunks of sectors from highest to lowest counts, creating partitions
-    for i in range (0, len(sorted_counts), page_size):
+    for i in range(0, len(sorted_counts), page_size):
 
         page = sorted_counts[i : i + page_size] 
 
@@ -69,7 +62,7 @@ def compute_sector_partitions(trace, page_size):
             break
 
         # if we hit the max desired ratio, create a new partition
-        if (current_max / count > 2):
+        if (current_max / count > target_ratio):
             current_max = count
             partitions.append([])
         
@@ -79,6 +72,20 @@ def compute_sector_partitions(trace, page_size):
     # give dead sectors their own partition
     dead_sectors = sorted_counts[dead_sectors_index:]
     partitions.append(dead_sectors)
+
+    return partitions
+
+def compute_sector_partitions(trace, page_size):
+    # get and sort sector write counts
+    sector_counts = compute_sector_write_counts(trace)
+    sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
+
+    # init vars for partition generation loop
+    max_count = 0
+    for i in range(page_size):
+        max_count += sorted_counts[i][1]
+
+    partitions = create_partitions(sorted_counts, max_count, page_size, DEFAULT_TARGET_RATIO)
     
     # print some stuff to console to check it's working...
     print("number of partitions: " + str(len(partitions)))
@@ -87,9 +94,38 @@ def compute_sector_partitions(trace, page_size):
         size_str += str(len(p)) + ", "
     print(size_str)
 
+def compute_minimum_frequency(trace, page_size, num_partitions, min_target_ratio, step, max_iterations):
+    # get and sort sector write counts
+    sector_counts = compute_sector_write_counts(trace)
+    sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
 
-# def compute_minimum_frequency(trace, page_size, num_partitions):
+    # init vars for partition generation loop
+    max_count = 0
+    for i in range(page_size):
+        max_count += sorted_counts[i][1]
 
+    target_ratio = min_target_ratio
+    N = float('inf')
+    iterations_taken = 0
+
+    for i in range(max_iterations):
+        partitions = create_partitions(sorted_counts, max_count, page_size, target_ratio)
+        N = len(partitions)
+        if (N <= num_partitions):
+            iterations_taken = i + 1
+            break
+        target_ratio += step
+
+    print("final ratio: ")
+    print(target_ratio)
+
+    print("final partitions: ")
+    print(N)
+
+    print("iterations taken")
+    print(iterations_taken)
+
+    return target_ratio
 
 if __name__ == "__main__":
     trace_path = DEFAULT_TRACE_PATH
@@ -100,5 +136,5 @@ if __name__ == "__main__":
         trace_path = sys.argv[1]
 
     trace = pandas.read_csv(trace_path)
-    compute_sector_partitions(trace, page_size)
-    # compute_minimum_frequency(trace, page_size, num_partitions)
+    # compute_sector_partitions(trace, page_size)
+    compute_minimum_frequency(trace, page_size, 2, 1.5, 0.5, 30)
