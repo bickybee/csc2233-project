@@ -53,25 +53,28 @@ def compute_sector_partitions(trace, page_size):
     dead_sectors_index = -1
     partitions = [[]]
 
-    # go through sectors from highest to lowest counts, creating partitions
-    for i, tup in enumerate(sorted_counts):
+    # go through page-size chunks of sectors from highest to lowest counts, creating partitions
+    for i in range (0, len(sorted_counts), page_size):
 
-        # calculates the count based on page size
+        page = sorted_counts[i : i + page_size] 
+
+        # calculates the count for the page
         count = 0
-        for k in range(page_size):
-            count += sorted_counts[i+k][1]
-        i += page_size-1
+        for sector in page:
+            count += sector[1]
 
-        # if we hit the dead sectors, stop here
+        # if we hit a dead page, stop here
         if (count == 0):
             dead_sectors_index = i
             break
-        # if we hit the max desired ratio, create a new partition
 
+        # if we hit the max desired ratio, create a new partition
         if (current_max / count > 2):
             current_max = count
             partitions.append([])
-        partitions[-1].append(tup)
+        
+        # add all sectors from this page to the current partition
+        partitions[-1].extend(page)
 
     # give dead sectors their own partition
     dead_sectors = sorted_counts[dead_sectors_index:]
