@@ -40,13 +40,11 @@ def compute_sector_write_counts(trace):
             sector_write_counts[sector] += 1 
     return sector_write_counts
 
+# greedy partitioning scheme!
 def create_partitions(sorted_counts, max_count, page_size, target_ratio):
     current_max = max_count
     dead_sectors_index = -1
     partitions = [[]]
-    ratios = []
-
-    prev_count = max_count
 
     # go through page-size chunks of sectors from highest to lowest counts, creating partitions
     for i in range(0, len(sorted_counts), page_size):
@@ -96,7 +94,7 @@ def compute_sector_partitions(trace, page_size):
         size_str += str(len(p)) + ", "
     print(size_str)
 
-
+# exhaustively find fmin(N) — the lowest ratio for which the greedy partitioning scheme results in max_num_partitions
 def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_ratio, threshold, max_iterations):
     # get and sort sector write counts
     sector_counts = compute_sector_write_counts(trace)
@@ -106,21 +104,25 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
     max_count = 0
     for i in range(page_size):
         max_count += sorted_counts[i][1]
-
     lower_bound = 1
     upper_bound = None
     best_ratio = None
     delta = math.inf
-    target_ratio = min_target_ratio # starting point
+    target_ratio = min_target_ratio
     num_partitions = math.inf
     iterations_taken = 0
 
+    # exhaustive search, go!
     for i in range(max_iterations): # to make sure we don't go forever :-)
+
         iterations_taken = i + 1
         print(target_ratio)
+
+        # compute partitions for current target ratio
         partitions = create_partitions(sorted_counts, max_count, page_size, target_ratio)
         num_partitions = len(partitions)
         new_target = None
+
         # if we still have too many partitions, increase target ratio
         if (num_partitions > max_num_partitions):
             print("increase")
@@ -130,26 +132,22 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
             else:
                 new_target = target_ratio * 2
             delta = new_target - target_ratio
+
         # if we're within the right number of partitions, search for best ratio
         else:
             print("decrease")
-            best_ratio = target_ratio
+            best_ratio = target_ratio # save this as our best candidate so far!
             upper_bound = target_ratio
             new_target = target_ratio - ((target_ratio - lower_bound) / 2.0)
             delta = target_ratio - new_target
+
         # if we're barely moving, break    
         if delta <= threshold:
                 break
+
         target_ratio = new_target
 
-
-    print("final ratio: ")
-    print(target_ratio)
-
-    print("final partitions: ")
-    print(num_partitions)
-
-    print("best ratio: ")
+    print("fmin(N): ")
     print(best_ratio)
 
     print("final delta: ")
@@ -158,7 +156,7 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
     print("iterations taken")
     print(iterations_taken)
 
-    return target_ratio # should compute and return real ratio!
+    return best_ratio 
 
 if __name__ == "__main__":
     trace_path = DEFAULT_TRACE_PATH
@@ -166,8 +164,8 @@ if __name__ == "__main__":
 
     max_num_partitions = 3.0
     initial_target_ratio = 2.0
-    threshold = 0.1
-    max_iterations = 10
+    threshold = 0.01
+    max_iterations = 20
 
     if (len(sys.argv) == 2):
         trace_path = sys.argv[1]
