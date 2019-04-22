@@ -165,7 +165,7 @@ if __name__ == "__main__":
     max_num_partitions = 3.0
     initial_target_ratio = 2.0
     threshold = 0.01
-    max_iterations = 20
+    max_iterations = 10
 
     if (len(sys.argv) == 2):
         trace_path = sys.argv[1]
