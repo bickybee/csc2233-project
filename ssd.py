@@ -2,10 +2,14 @@ import pandas
 import operator
 import sys
 import math
+import os
 from enum import Enum
 
-DEFAULT_TRACE_PATH = 'data/workloada_csv.csv'
+DEFAULT_TRACE_FOLDER_PATH = './data/formatted/'
+DEFAULT_OUTPUT_PATH = 'output.csv'
 DEFAULT_TARGET_RATIO = 2
+THRESHOLD = 0.01
+MAX_ITERATIONS = 20
 
 class page_size(Enum):
     DEFAULT = 1
@@ -16,6 +20,9 @@ class page_size(Enum):
     SIXTEEN_KB = 32
     THIRTY_TWO_KB = 64
     SIXTY_FOUR_KB = 128
+
+EXPERIMENT_PARTITION_NUMS = [2, 4, 8, 12, 16, 24]
+EXPERIMENT_PAGE_SIZES = [page_size.DEFAULT, page_size.FOUR_KB, page_size.SIXTEEN_KB, page_size.SIXTY_FOUR_KB]
 
 def find_completed_writes(trace):
     writes = trace.loc[trace['operation'].str.contains('W')]
@@ -88,11 +95,14 @@ def compute_sector_partitions(trace, page_size):
     partitions = create_partitions(sorted_counts, max_count, page_size, DEFAULT_TARGET_RATIO)
     
     # print some stuff to console to check it's working...
-    print("number of partitions: " + str(len(partitions)))
-    size_str = "partition sizes: "
-    for p in partitions:
-        size_str += str(len(p)) + ", "
-    print(size_str)
+    num_partitions = len(partitions)
+    # print("number of partitions: " + str(num_partitions))
+    # size_str = "partition sizes: "
+    # for p in partitions:
+    #     size_str += str(len(p)) + ", "
+    # print(size_str)
+
+    return num_partitions
 
 # exhaustively find fmin(N) — the lowest ratio for which the greedy partitioning scheme results in max_num_partitions
 def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_ratio, threshold, max_iterations):
@@ -116,7 +126,7 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
     for i in range(max_iterations): # to make sure we don't go forever :-)
 
         iterations_taken = i + 1
-        print(target_ratio)
+        # print(target_ratio)
 
         # compute partitions for current target ratio
         partitions = create_partitions(sorted_counts, max_count, page_size, target_ratio)
@@ -125,7 +135,7 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
 
         # if we still have too many partitions, increase target ratio
         if (num_partitions > max_num_partitions):
-            print("increase")
+            # print("increase")
             lower_bound = target_ratio
             if upper_bound is not None:
                 new_target = target_ratio + ((upper_bound - target_ratio) / 2.0)
@@ -135,7 +145,7 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
 
         # if we're within the right number of partitions, search for best ratio
         else:
-            print("decrease")
+            # print("decrease")
             best_ratio = target_ratio # save this as our best candidate so far!
             upper_bound = target_ratio
             new_target = target_ratio - ((target_ratio - lower_bound) / 2.0)
@@ -147,29 +157,75 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
 
         target_ratio = new_target
 
-    print("fmin(N): ")
-    print(best_ratio)
+    # print("fmin(N): ")
+    # print(best_ratio)
 
-    print("final delta: ")
-    print(delta)
+    # print("final delta: ")
+    # print(delta)
 
-    print("iterations taken")
-    print(iterations_taken)
+    # print("iterations taken")
+    # print(iterations_taken)
 
-    return best_ratio 
+    return best_ratio
+
+def run_experiment_1(traces_dict):
+    print("EXPERIMENT 1")
+    results = {}
+
+    for trace_name, trace in traces_dict.items():
+        print(trace_name)
+        results[trace_name] = compute_sector_partitions(trace, page_size.DEFAULT.value)
+
+    return results
+
+def run_experiment_2(traces_dict):
+    results = {}
+
+    for partition_num in EXPERIMENT_PARTITION_NUMS:
+        print(str(partition_num) + " partitions")
+        results[partition_num] = []
+        for trace_name, trace in traces_dict.items():
+            print(trace_name)
+            result = compute_minimum_frequency(trace, page_size.DEFAULT.value, partition_num, DEFAULT_TARGET_RATIO, THRESHOLD, MAX_ITERATIONS)
+            results[partition_num].append(result)
+
+    return results
+
+def run_experiment_3(traces_dict):
+    results = {}
+
+    for partition_num in EXPERIMENT_PARTITION_NUMS:
+            for size in EXPERIMENT_PAGE_SIZES:
+                key = str(partition_num) + "," + str(size.name)
+                results[key] = []
+                print(key)
+                for trace_name, trace in traces_dict.items():
+                    print(trace_name)
+                    result = compute_minimum_frequency(trace, size.value, partition_num, DEFAULT_TARGET_RATIO, THRESHOLD, MAX_ITERATIONS)
+                    results[key].append(result)
+    
+    return results
 
 if __name__ == "__main__":
-    trace_path = DEFAULT_TRACE_PATH
-    page_size = page_size.DEFAULT.value
-
-    max_num_partitions = 3.0
-    initial_target_ratio = 2.0
-    threshold = 0.01
-    max_iterations = 10
+    folder_path = DEFAULT_TRACE_FOLDER_PATH
+    traces = {}
 
     if (len(sys.argv) == 2):
-        trace_path = sys.argv[1]
+        folder_path = sys.argv[1]
 
-    trace = pandas.read_csv(trace_path)
-    # compute_sector_partitions(trace, page_size)
-    compute_minimum_frequency(trace, page_size, max_num_partitions, initial_target_ratio, threshold, max_iterations)
+    for entry in os.scandir(folder_path):
+        trace = pandas.read_csv(folder_path + entry.name)
+        traces[entry.name] = trace
+
+    # results1 = run_experiment_1(traces)
+    # df1 = pandas.DataFrame(results1, index=[0])
+    # df1.to_csv('results1.csv')
+
+    # results2 = run_experiment_2(traces)
+    # df2 = pandas.DataFrame(results2)
+    # df2.to_csv('results2.csv')
+
+    results3 = run_experiment_3(traces)
+    df3 = pandas.DataFrame(results3)
+    df3.to_csv('results3.csv')
+    
