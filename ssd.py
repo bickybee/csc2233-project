@@ -44,7 +44,8 @@ def compute_sector_write_counts(trace):
         starting_sector = write['sector_number']
         ending_sector = starting_sector + write['request_size']
         for sector in range(starting_sector, ending_sector + 1):
-            sector_write_counts[sector] += 1 
+            sector_write_counts[sector] += 1
+
     return sector_write_counts
 
 # greedy partitioning scheme!
@@ -86,6 +87,8 @@ def compute_sector_partitions(trace, page_size):
     # get and sort sector write counts
     sector_counts = compute_sector_write_counts(trace)
     sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
+
+    print(sorted_counts[:50])
 
     # init vars for partition generation loop
     max_count = 0
@@ -217,13 +220,13 @@ if __name__ == "__main__":
         trace = pandas.read_csv(folder_path + entry.name)
         traces[entry.name] = trace
 
-    # results1 = run_experiment_1(traces)
-    # df1 = pandas.DataFrame(results1, index=[0])
-    # df1.to_csv('results1.csv')
+    results1 = run_experiment_1(traces)
+    df1 = pandas.DataFrame(results1, index=[0])
+    df1.to_csv('results1.csv')
 
-    # results2 = run_experiment_2(traces)
-    # df2 = pandas.DataFrame(results2)
-    # df2.to_csv('results2.csv')
+    results2 = run_experiment_2(traces)
+    df2 = pandas.DataFrame(results2)
+    df2.to_csv('results2.csv')
 
     results3 = run_experiment_3(traces)
     df3 = pandas.DataFrame(results3)
