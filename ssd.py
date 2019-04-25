@@ -94,14 +94,7 @@ def compute_sector_partitions(trace, page_size):
         max_count += sorted_counts[i][1]
 
     partitions = create_partitions(sorted_counts, max_count, page_size, DEFAULT_TARGET_RATIO)
-    
-    # print some stuff to console to check it's working...
     num_partitions = len(partitions)
-    # print("number of partitions: " + str(num_partitions))
-    # size_str = "partition sizes: "
-    # for p in partitions:
-    #     size_str += str(len(p)) + ", "
-    # print(size_str)
 
     return num_partitions
 
@@ -127,7 +120,6 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
     for i in range(MAX_ITERATIONS): # to make sure we don't go forever :-)
 
         iterations_taken = i + 1
-        # print(target_ratio)
 
         # compute partitions for current target ratio
         partitions = create_partitions(sorted_counts, max_count, page_size, target_ratio)
@@ -136,7 +128,6 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
 
         # if we still have too many partitions, increase target ratio
         if (num_partitions > max_num_partitions):
-            # print("increase")
             lower_bound = target_ratio
             if upper_bound is not None:
                 new_target = target_ratio + ((upper_bound - target_ratio) / 2.0)
@@ -146,7 +137,6 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
 
         # if we're within the right number of partitions, search for best ratio
         else:
-            # print("decrease")
             best_ratio = target_ratio # save this as our best candidate so far!
             upper_bound = target_ratio
             new_target = target_ratio - ((target_ratio - lower_bound) / 2.0)
@@ -157,15 +147,6 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
             break
 
         target_ratio = new_target
-
-    # print("fmin(N): ")
-    # print(best_ratio)
-
-    # print("final delta: ")
-    # print(delta)
-
-    # print("iterations taken")
-    # print(iterations_taken)
 
     return best_ratio
 
@@ -198,8 +179,8 @@ def compute_spatial_locality_probability(trace):
     print("Spatial locality probability: ")
     print("t: %d d: %d probability %s" % (t, d, probability))
 
-
-def run_experiment_1(traces_dict):
+# compute sector partitions for all traces
+def run_partition_experiment_1(traces_dict):
     print("EXPERIMENT 1")
     results = {}
 
@@ -209,7 +190,8 @@ def run_experiment_1(traces_dict):
 
     return results
 
-def run_experiment_2(traces_dict):
+# compute best ratio given a max partitioning N for all traces
+def run_partition_experiment_2(traces_dict):
     results = {}
 
     for partition_num in EXPERIMENT_PARTITION_NUMS:
@@ -222,7 +204,8 @@ def run_experiment_2(traces_dict):
 
     return results
 
-def run_experiment_3(traces_dict):
+# compute best ratio given a max partitioning N and page size for all traces
+def run_partition_experiment_3(traces_dict):
     results = {}
 
     for partition_num in EXPERIMENT_PARTITION_NUMS:
@@ -237,7 +220,7 @@ def run_experiment_3(traces_dict):
     
     return results
 
-# run first 3 experiments and output results as csv files
+# run all 3 partitioning experiments and output results as csv files
 def run_partition_experiments(trace_folder_path):
     traces = {}
 
@@ -245,15 +228,15 @@ def run_partition_experiments(trace_folder_path):
         trace = pandas.read_csv(folder_path + entry.name)
         traces[entry.name] = trace
 
-    results1 = run_experiment_1(traces)
+    results1 = run_partition_experiment_1(traces)
     df1 = pandas.DataFrame(results1, index=[0])
     df1.to_csv('results1.csv')
 
-    results2 = run_experiment_2(traces)
+    results2 = run_partition_experiment_2(traces)
     df2 = pandas.DataFrame(results2)
     df2.to_csv('results2.csv')
 
-    results3 = run_experiment_3(traces)
+    results3 = run_partition_experiment_3(traces)
     df3 = pandas.DataFrame(results3)
     df3.to_csv('results3.csv')
 
