@@ -88,8 +88,6 @@ def compute_sector_partitions(trace, page_size):
     sector_counts = compute_sector_write_counts(trace)
     sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
 
-    print(sorted_counts[:50])
-
     # init vars for partition generation loop
     max_count = 0
     for i in range(page_size):
@@ -156,7 +154,7 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
 
         # if we're barely moving, break    
         if delta <= threshold:
-                break
+            break
 
         target_ratio = new_target
 
@@ -209,14 +207,11 @@ def run_experiment_3(traces_dict):
     
     return results
 
-if __name__ == "__main__":
-    folder_path = DEFAULT_TRACE_FOLDER_PATH
+# run first 3 experiments and output results as csv files
+def run_experiments(trace_folder_path):
     traces = {}
 
-    if (len(sys.argv) == 2):
-        folder_path = sys.argv[1]
-
-    for entry in os.scandir(folder_path):
+    for entry in os.scandir(trace_folder_path):
         trace = pandas.read_csv(folder_path + entry.name)
         traces[entry.name] = trace
 
@@ -231,4 +226,13 @@ if __name__ == "__main__":
     results3 = run_experiment_3(traces)
     df3 = pandas.DataFrame(results3)
     df3.to_csv('results3.csv')
+
+
+if __name__ == "__main__":
+    folder_path = DEFAULT_TRACE_FOLDER_PATH
+
+    if (len(sys.argv) == 2):
+        folder_path = sys.argv[1]
+
+    run_experiments(folder_path)
     
