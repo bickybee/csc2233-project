@@ -6,12 +6,12 @@ import os
 from enum import Enum
 
 DEFAULT_TRACE_FOLDER_PATH = './data/formatted/'
-DEFAULT_TRACE_PATH = 'data/formatted/workloada_trace_btrfs.csv'
-DEFAULT_TARGET_RATIO = 2
+DEFAULT_TRACE_PATH = 'data/formatted/workloada_trace_f2fs.csv'
+DEFAULT_TARGET_RATIO = 2.0
 THRESHOLD = 0.01
 MAX_ITERATIONS = 20
 
-class page_size(Enum):
+class page_sizes(Enum):
     DEFAULT = 1
     ONE_KB = 2
     TWO_KB = 4
@@ -22,7 +22,7 @@ class page_size(Enum):
     SIXTY_FOUR_KB = 128
 
 EXPERIMENT_PARTITION_NUMS = [2, 4, 8, 12, 16, 24]
-EXPERIMENT_PAGE_SIZES = [page_size.DEFAULT, page_size.FOUR_KB, page_size.SIXTEEN_KB, page_size.SIXTY_FOUR_KB]
+EXPERIMENT_PAGE_SIZES = [page_sizes.DEFAULT, page_sizes.FOUR_KB, page_sizes.SIXTEEN_KB, page_sizes.SIXTY_FOUR_KB]
 
 def find_completed_writes(trace):
     writes = trace.loc[trace['operation'].str.contains('W')]
@@ -32,41 +32,35 @@ def find_completed_writes(trace):
 def compute_max_sector_number(trace):
     return trace[['sector_number','request_size']].sum(axis=1).sort_values(ascending=False).head(1).iat[0]
 
-def compute_sector_write_counts(trace):
+def compute_page_write_counts(trace, page_size):
     writes = find_completed_writes(trace)
     num_sectors = compute_max_sector_number(writes)
-    # initialize sector write counts to 0
-    # each element in the dict corresponds to a sector
-    # (a list might be faster but this way we can sort by count later and keep the sector numbers)
-    sector_write_counts = {sector_number: 0 for sector_number in range(num_sectors + 1)}
-    # compute write count for every sector
+    # initialize page write counts to 0
+    # each element in the dict corresponds to a page
+    # (a list might be faster but this way we can sort by count later and keep the page addresses)
+    page_write_counts = {page_address: 0 for page_address in range(0, num_sectors + 1, page_size)}
+    # compute write count for every page
     for i, write in writes.iterrows():
-        starting_sector = write['sector_number']
-        ending_sector = starting_sector + write['request_size']
-        for sector in range(starting_sector, ending_sector + 1):
-            sector_write_counts[sector] += 1
+        starting_address = write['sector_number']
+        ending_address = starting_address + write['request_size']
+        aligned_starting_address = math.floor(starting_address / page_size) * page_size
+        for page in range(aligned_starting_address, ending_address + 1, page_size):
+            page_write_counts[page] += 1
 
-    return sector_write_counts
+    return page_write_counts
 
 # greedy partitioning scheme!
 def create_partitions(sorted_counts, max_count, page_size, target_ratio):
     current_max = max_count
-    dead_sectors_index = -1
+    dead_pages_index = -1
     partitions = [[]]
 
     # go through page-size chunks of sectors from highest to lowest counts, creating partitions
-    for i in range(0, len(sorted_counts), page_size):
-
-        page = sorted_counts[i : i + page_size] 
-
-        # calculates the count for the page
-        count = 0
-        for sector in page:
-            count += sector[1]
+    for i, (page_address, count) in enumerate(sorted_counts):
 
         # if we hit a dead page, stop here
         if (count == 0):
-            dead_sectors_index = i
+            dead_pages_index = i
             break
 
         # if we hit the max desired ratio, create a new partition
@@ -75,23 +69,21 @@ def create_partitions(sorted_counts, max_count, page_size, target_ratio):
             partitions.append([])
         
         # add all sectors from this page to the current partition
-        partitions[-1].extend(page)
+        partitions[-1].append((page_address, count))
 
     # give dead sectors their own partition
-    dead_sectors = sorted_counts[dead_sectors_index:]
-    partitions.append(dead_sectors)
+    dead_pages = sorted_counts[dead_pages_index:]
+    partitions.append(dead_pages)
 
     return partitions
 
-def compute_sector_partitions(trace, page_size):
+def compute_ideal_partitions(sorted_counts, page_size):
     # get and sort sector write counts
-    sector_counts = compute_sector_write_counts(trace)
-    sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
+    page_counts = compute_page_write_counts(trace, page_size)
+    sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
 
     # init vars for partition generation loop
-    max_count = 0
-    for i in range(page_size):
-        max_count += sorted_counts[i][1]
+    max_count = sorted_counts[0][1]
 
     partitions = create_partitions(sorted_counts, max_count, page_size, DEFAULT_TARGET_RATIO)
     num_partitions = len(partitions)
@@ -99,20 +91,18 @@ def compute_sector_partitions(trace, page_size):
     return num_partitions
 
 # exhaustively find fmin(N) — the lowest ratio for which the greedy partitioning scheme results in max_num_partitions
-def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_ratio):
+def compute_minimum_frequency(sorted_counts, page_size, max_num_partitions):
     # get and sort sector write counts
-    sector_counts = compute_sector_write_counts(trace)
-    sorted_counts = sorted(sector_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
+    page_counts = compute_page_write_counts(trace, page_size)
+    sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
 
     # init vars for partition generation loop
-    max_count = 0
-    for i in range(page_size):
-        max_count += sorted_counts[i][1]
-    lower_bound = 1
+    max_count = sorted_counts[0][1]
+    lower_bound = 1.0
     upper_bound = None
     best_ratio = None
     delta = math.inf
-    target_ratio = min_target_ratio
+    target_ratio = DEFAULT_TARGET_RATIO
     num_partitions = math.inf
     iterations_taken = 0
 
@@ -132,7 +122,7 @@ def compute_minimum_frequency(trace, page_size, max_num_partitions, min_target_r
             if upper_bound is not None:
                 new_target = target_ratio + ((upper_bound - target_ratio) / 2.0)
             else:
-                new_target = target_ratio * 2
+                new_target = target_ratio * 2.0
             delta = new_target - target_ratio
 
         # if we're within the right number of partitions, search for best ratio
@@ -186,7 +176,7 @@ def run_partition_experiment_1(traces_dict):
 
     for trace_name, trace in traces_dict.items():
         print(trace_name)
-        results[trace_name] = compute_sector_partitions(trace, page_size.DEFAULT.value)
+        results[trace_name] = compute_ideal_partitions(trace, page_sizes.DEFAULT.value)
 
     return results
 
@@ -199,7 +189,7 @@ def run_partition_experiment_2(traces_dict):
         results[partition_num] = []
         for trace_name, trace in traces_dict.items():
             print(trace_name)
-            result = compute_minimum_frequency(trace, page_size.DEFAULT.value, partition_num, DEFAULT_TARGET_RATIO)
+            result = compute_minimum_frequency(trace, page_sizes.DEFAULT.value, partition_num)
             results[partition_num].append(result)
 
     return results
@@ -207,18 +197,25 @@ def run_partition_experiment_2(traces_dict):
 # compute best ratio given a max partitioning N and page size for all traces
 def run_partition_experiment_3(traces_dict):
     results = {}
+    result_avgs = {}
 
     for partition_num in EXPERIMENT_PARTITION_NUMS:
-            for size in EXPERIMENT_PAGE_SIZES:
-                key = str(partition_num) + "," + str(size.name)
-                results[key] = []
-                print(key)
-                for trace_name, trace in traces_dict.items():
-                    print(trace_name)
-                    result = compute_minimum_frequency(trace, size.value, partition_num, DEFAULT_TARGET_RATIO)
-                    results[key].append(result)
-    
-    return results
+        result_avgs[partition_num] = {}
+        for size in EXPERIMENT_PAGE_SIZES:
+            key = str(partition_num) + "," + str(size.name)
+            results[key] = []
+            result_avgs[partition_num][size.name] = 0
+            print(key)
+            for trace_name, trace in traces_dict.items():
+                print(trace_name)
+                result = compute_minimum_frequency(trace, size.value, partition_num)
+                results[key].append(result)
+                result_avgs[partition_num][size] += result
+            result_avgs[partition_num][size] /= len(results[key])
+            print(result_avgs[partition_num][size])
+        print(result_avgs)
+
+    return results, result_avgs
 
 # run all 3 partitioning experiments and output results as csv files
 def run_partition_experiments(trace_folder_path):
@@ -236,9 +233,11 @@ def run_partition_experiments(trace_folder_path):
     df2 = pandas.DataFrame(results2)
     df2.to_csv('results2.csv')
 
-    results3 = run_partition_experiment_3(traces)
+    results3, results3avgs = run_partition_experiment_3(traces)
     df3 = pandas.DataFrame(results3)
-    df3.to_csv('results3.csv')
+    df3.to_csv('results3_take2.csv')
+    df3avgs = pandas.DataFrame(results3avgs)
+    df3avgs.to_csv('results3avgs.csv')
 
 
 if __name__ == "__main__":
@@ -249,7 +248,7 @@ if __name__ == "__main__":
         trace_path = sys.argv[1]
 
     trace = pandas.read_csv(trace_path)
-    compute_spatial_locality_probability(trace)
+    # compute_spatial_locality_probability(trace)
 
     run_partition_experiments(folder_path)
     
