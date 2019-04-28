@@ -4,9 +4,9 @@ import sys
 import math
 import os
 from enum import Enum
+from traceUtils import find_completed_writes, compute_max_sector_number, compute_page_write_counts
 
-DEFAULT_TRACE_FOLDER_PATH = './data/formatted/'
-DEFAULT_TRACE_PATH = 'data/formatted/workloada_trace_f2fs.csv'
+DEFAULT_TRACE_FOLDER_PATH = '../data/formatted/'
 DEFAULT_TARGET_RATIO = 2.0
 THRESHOLD = 0.01
 MAX_ITERATIONS = 20
@@ -23,34 +23,6 @@ class page_sizes(Enum):
 
 EXPERIMENT_PARTITION_NUMS = [2, 4, 8, 12, 16, 24]
 EXPERIMENT_PAGE_SIZES = [page_sizes.DEFAULT, page_sizes.FOUR_KB, page_sizes.SIXTEEN_KB, page_sizes.SIXTY_FOUR_KB]
-
-# EXPERIMENT_PARTITION_NUMS = [2, 4]
-# EXPERIMENT_PAGE_SIZES = [page_sizes.DEFAULT, page_sizes.FOUR_KB]
-
-def find_completed_writes(trace):
-    writes = trace.loc[trace['operation'].str.contains('W')]
-    completed_writes = writes.loc[writes['action'] == 'C']
-    return completed_writes
-
-def compute_max_sector_number(trace):
-    return trace[['sector_number','request_size']].sum(axis=1).sort_values(ascending=False).head(1).iat[0]
-
-def compute_page_write_counts(trace, page_size):
-    writes = find_completed_writes(trace)
-    num_sectors = compute_max_sector_number(writes)
-    # initialize page write counts to 0
-    # each element in the dict corresponds to a page
-    # (a list might be faster but this way we can sort by count later and keep the page addresses)
-    page_write_counts = {page_address: 0 for page_address in range(0, num_sectors + 1, page_size)}
-    # compute write count for every page
-    for i, write in writes.iterrows():
-        starting_address = write['sector_number']
-        ending_address = starting_address + write['request_size']
-        aligned_starting_address = math.floor(starting_address / page_size) * page_size
-        for page in range(aligned_starting_address, ending_address + 1, page_size):
-            page_write_counts[page] += 1
-
-    return page_write_counts
 
 # greedy partitioning scheme!
 def create_partitions(sorted_counts, max_count, page_size, target_ratio):
@@ -136,35 +108,6 @@ def compute_minimum_frequency(sorted_counts, page_size, max_num_partitions):
 
     return best_ratio
 
-def compute_spatial_locality_probability(trace):
-    t=5000
-    d=1024
-
-    # filter out only writes
-    write_trace = find_completed_writes(trace)
-
-    # virtual time; a counter incemented for each IO request which is inferred to be the sequence number
-    # filter out columns we want
-    #filtered_trace = write_trace[['timestamp', 'sector_number', 'request_size']]
-    filtered_trace = write_trace[['sequence_number', 'sector_number', 'request_size']]
-
-    # sort trace by descending timestamp
-    time_trace = filtered_trace.sort_values(by=['sequence_number'], ascending=False)
-
-    # shift trace upwards to compare values
-    time_trace_shift = time_trace.shift(-1)
-    time_trace['hit'] = ((time_trace['sequence_number'] - time_trace_shift['sequence_number']) <= t) \
-                        & (abs(time_trace['sector_number'] - time_trace_shift['sector_number']) <= d)
-
-    # we do not consider pages in the same requests as hits; they are ignored. We only look at separate requests
-    hits = time_trace['hit'].sum()
-
-    # we ignore the last page, since it has no other page to compare it to
-    probability = hits / (len(time_trace['hit']) - 1)
-
-    print("Spatial locality probability: ")
-    print("t: %d d: %d probability %s" % (t, d, probability))
-
 # compute sector partitions for all traces
 def run_partition_experiment_1(traces_dict):
     print("EXPERIMENT 1")
@@ -175,7 +118,6 @@ def run_partition_experiment_1(traces_dict):
          # get and sort sector write counts
         page_counts = compute_page_write_counts(trace, page_sizes.DEFAULT.value)
         sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
-        print(sorted_counts[:50])
         results[trace_name] = compute_ideal_partitions(sorted_counts, page_sizes.DEFAULT.value)
 
     return results
@@ -262,13 +204,9 @@ def run_partition_experiments(trace_folder_path):
 
 if __name__ == "__main__":
     folder_path = DEFAULT_TRACE_FOLDER_PATH
-    trace_path = DEFAULT_TRACE_PATH
 
     if (len(sys.argv) == 2):
-        trace_path = sys.argv[1]
-
-    trace = pandas.read_csv(trace_path)
-    compute_spatial_locality_probability(trace)
+        folder_path = sys.argv[1]
 
     run_partition_experiments(folder_path)
     
