@@ -244,20 +244,20 @@ def run_partition_experiments(trace_folder_path):
         traces[entry.name] = trace
 
     results1 = run_partition_experiment_1(traces)
-    # df1 = pandas.DataFrame(results1, index=[0])
-    # df1.to_csv('results1.csv')
+    df1 = pandas.DataFrame(results1, index=[0])
+    df1.to_csv('results1.csv')
 
-    # results2 = run_partition_experiment_2(traces)
-    # df2 = pandas.DataFrame(results2)
-    # df2.to_csv('results2.csv')
+    results2 = run_partition_experiment_2(traces)
+    df2 = pandas.DataFrame(results2)
+    df2.to_csv('results2.csv')
 
-    # results3, results3avgs = run_partition_experiment_3(traces)
-    # df3 = pandas.DataFrame(results3)
-    # df3.to_csv('results3_take2.csv')
-    # df3avgs = pandas.DataFrame(results3avgs)
-    # df3avgs.to_csv('results3avgs.csv')
-    # df3maxs = pandas.DataFrame(results3avgs)
-    # df3maxs.to_csv('results3maxs.csv')
+    results3, results3avgs = run_partition_experiment_3(traces)
+    df3 = pandas.DataFrame(results3)
+    df3.to_csv('results3_take2.csv')
+    df3avgs = pandas.DataFrame(results3avgs)
+    df3avgs.to_csv('results3avgs.csv')
+    df3maxs = pandas.DataFrame(results3avgs)
+    df3maxs.to_csv('results3maxs.csv')
 
 
 if __name__ == "__main__":
