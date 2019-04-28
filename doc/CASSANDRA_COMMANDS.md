@@ -4,7 +4,7 @@ Here is a list of commands used as a reference for running YCSB workloads agains
 #### Loading Phase
 The following is an example of the loading phase loading workload A data:
 ```
-./bin/ycsb load cassandra-cql -p hosts=localhost -p recordcount=1000000  -p workloads/workloada -s > a_load_1.txt
+./bin/ycsb load cassandra-cql -p hosts=localhost -p recordcount=1000000  -P workloads/workloada -s > a_load_1.txt
 ```
 #### Clear Page Cache
 ```
