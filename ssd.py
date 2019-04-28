@@ -24,6 +24,9 @@ class page_sizes(Enum):
 EXPERIMENT_PARTITION_NUMS = [2, 4, 8, 12, 16, 24]
 EXPERIMENT_PAGE_SIZES = [page_sizes.DEFAULT, page_sizes.FOUR_KB, page_sizes.SIXTEEN_KB, page_sizes.SIXTY_FOUR_KB]
 
+# EXPERIMENT_PARTITION_NUMS = [2, 4]
+# EXPERIMENT_PAGE_SIZES = [page_sizes.DEFAULT, page_sizes.FOUR_KB]
+
 def find_completed_writes(trace):
     writes = trace.loc[trace['operation'].str.contains('W')]
     completed_writes = writes.loc[writes['action'] == 'C']
@@ -78,10 +81,6 @@ def create_partitions(sorted_counts, max_count, page_size, target_ratio):
     return partitions
 
 def compute_ideal_partitions(sorted_counts, page_size):
-    # get and sort sector write counts
-    page_counts = compute_page_write_counts(trace, page_size)
-    sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
-
     # init vars for partition generation loop
     max_count = sorted_counts[0][1]
 
@@ -92,9 +91,6 @@ def compute_ideal_partitions(sorted_counts, page_size):
 
 # exhaustively find fmin(N) — the lowest ratio for which the greedy partitioning scheme results in max_num_partitions
 def compute_minimum_frequency(sorted_counts, page_size, max_num_partitions):
-    # get and sort sector write counts
-    page_counts = compute_page_write_counts(trace, page_size)
-    sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
 
     # init vars for partition generation loop
     max_count = sorted_counts[0][1]
@@ -176,46 +172,72 @@ def run_partition_experiment_1(traces_dict):
 
     for trace_name, trace in traces_dict.items():
         print(trace_name)
-        results[trace_name] = compute_ideal_partitions(trace, page_sizes.DEFAULT.value)
+         # get and sort sector write counts
+        page_counts = compute_page_write_counts(trace, page_sizes.DEFAULT.value)
+        sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
+        print(sorted_counts[:50])
+        results[trace_name] = compute_ideal_partitions(sorted_counts, page_sizes.DEFAULT.value)
 
     return results
 
 # compute best ratio given a max partitioning N for all traces
 def run_partition_experiment_2(traces_dict):
-    results = {}
+    results = dict.fromkeys(EXPERIMENT_PARTITION_NUMS, [])
 
-    for partition_num in EXPERIMENT_PARTITION_NUMS:
-        print(str(partition_num) + " partitions")
-        results[partition_num] = []
-        for trace_name, trace in traces_dict.items():
-            print(trace_name)
-            result = compute_minimum_frequency(trace, page_sizes.DEFAULT.value, partition_num)
+    for trace_name, trace in traces_dict.items():
+        print(trace_name)
+
+        page_counts = compute_page_write_counts(trace, page_sizes.DEFAULT.value)
+        sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True)
+
+        for partition_num in EXPERIMENT_PARTITION_NUMS:
+            print(str(partition_num) + " partitions")
+
+            result = compute_minimum_frequency(sorted_counts, page_sizes.DEFAULT.value, partition_num)
             results[partition_num].append(result)
 
     return results
 
 # compute best ratio given a max partitioning N and page size for all traces
 def run_partition_experiment_3(traces_dict):
-    results = {}
-    result_avgs = {}
+    keys = []
 
     for partition_num in EXPERIMENT_PARTITION_NUMS:
-        result_avgs[partition_num] = {}
         for size in EXPERIMENT_PAGE_SIZES:
-            key = str(partition_num) + "," + str(size.name)
-            results[key] = []
-            result_avgs[partition_num][size.name] = 0
-            print(key)
-            for trace_name, trace in traces_dict.items():
-                print(trace_name)
-                result = compute_minimum_frequency(trace, size.value, partition_num)
-                results[key].append(result)
-                result_avgs[partition_num][size] += result
-            result_avgs[partition_num][size] /= len(results[key])
-            print(result_avgs[partition_num][size])
-        print(result_avgs)
+            keys.append(str(partition_num) + "," + str(size.name))
 
-    return results, result_avgs
+    # EXCUSE THIS UGLYNESS!
+    results = dict((k, []) for k in keys)
+    result_sums = dict((k1, dict((k2, 0) for k2 in [size.name for size in EXPERIMENT_PAGE_SIZES])) for k1 in EXPERIMENT_PARTITION_NUMS)
+    result_avgs = dict((k1, dict((k2, 0) for k2 in [size.name for size in EXPERIMENT_PAGE_SIZES])) for k1 in EXPERIMENT_PARTITION_NUMS)
+
+    for trace_name, trace in traces_dict.items():
+        print(trace_name)
+
+        for size in EXPERIMENT_PAGE_SIZES:
+            page_counts = compute_page_write_counts(trace, size.value)
+            sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True)
+
+            for partition_num in EXPERIMENT_PARTITION_NUMS:
+                key = str(partition_num) + "," + str(size.name)
+
+                result = compute_minimum_frequency(sorted_counts, size.value, partition_num)
+                results[key].append(result)
+                result_sums[partition_num][size.name] += result
+
+                result_max = result_maxs[partition_num][size.name]
+                if (result > result_max):
+                    result_maxs[partition_num][size.name] = result
+
+                print(key)
+
+    # get averages from results
+    n = len(results[keys[0]])
+    for k1, v1 in result_sums.items():
+        for k2, v2 in v1.items():
+            result_avgs[k1][k2] = v2 / n
+
+    return results, result_avgs, result_maxs
 
 # run all 3 partitioning experiments and output results as csv files
 def run_partition_experiments(trace_folder_path):
@@ -226,18 +248,20 @@ def run_partition_experiments(trace_folder_path):
         traces[entry.name] = trace
 
     results1 = run_partition_experiment_1(traces)
-    df1 = pandas.DataFrame(results1, index=[0])
-    df1.to_csv('results1.csv')
+    # df1 = pandas.DataFrame(results1, index=[0])
+    # df1.to_csv('results1.csv')
 
-    results2 = run_partition_experiment_2(traces)
-    df2 = pandas.DataFrame(results2)
-    df2.to_csv('results2.csv')
+    # results2 = run_partition_experiment_2(traces)
+    # df2 = pandas.DataFrame(results2)
+    # df2.to_csv('results2.csv')
 
-    results3, results3avgs = run_partition_experiment_3(traces)
-    df3 = pandas.DataFrame(results3)
-    df3.to_csv('results3_take2.csv')
-    df3avgs = pandas.DataFrame(results3avgs)
-    df3avgs.to_csv('results3avgs.csv')
+    # results3, results3avgs, result3maxs = run_partition_experiment_3(traces)
+    # df3 = pandas.DataFrame(results3)
+    # df3.to_csv('results3_take2.csv')
+    # df3avgs = pandas.DataFrame(results3avgs)
+    # df3avgs.to_csv('results3avgs.csv')
+    # df3maxs = pandas.DataFrame(results3avgs)
+    # df3maxs.to_csv('results3maxs.csv')
 
 
 if __name__ == "__main__":
@@ -248,7 +272,7 @@ if __name__ == "__main__":
         trace_path = sys.argv[1]
 
     trace = pandas.read_csv(trace_path)
-    # compute_spatial_locality_probability(trace)
+    compute_spatial_locality_probability(trace)
 
     run_partition_experiments(folder_path)
     
