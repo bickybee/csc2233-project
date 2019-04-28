@@ -225,10 +225,6 @@ def run_partition_experiment_3(traces_dict):
                 results[key].append(result)
                 result_sums[partition_num][size.name] += result
 
-                result_max = result_maxs[partition_num][size.name]
-                if (result > result_max):
-                    result_maxs[partition_num][size.name] = result
-
                 print(key)
 
     # get averages from results
@@ -237,7 +233,7 @@ def run_partition_experiment_3(traces_dict):
         for k2, v2 in v1.items():
             result_avgs[k1][k2] = v2 / n
 
-    return results, result_avgs, result_maxs
+    return results, result_avgs
 
 # run all 3 partitioning experiments and output results as csv files
 def run_partition_experiments(trace_folder_path):
@@ -255,7 +251,7 @@ def run_partition_experiments(trace_folder_path):
     # df2 = pandas.DataFrame(results2)
     # df2.to_csv('results2.csv')
 
-    # results3, results3avgs, result3maxs = run_partition_experiment_3(traces)
+    # results3, results3avgs = run_partition_experiment_3(traces)
     # df3 = pandas.DataFrame(results3)
     # df3.to_csv('results3_take2.csv')
     # df3avgs = pandas.DataFrame(results3avgs)
