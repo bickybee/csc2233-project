@@ -11,7 +11,8 @@ TARGET_RATIO = 2
 
 def equalize_partitions_loose(trace):
     sorted_counts = sorted_page_counts(trace, 8)
-    partitions = create_partitions(sorted_counts, PAGE_SIZE, TARGET_RATIO)
+    max_count = sorted_counts[0][1]
+    partitions = create_partitions(sorted_counts, max_count, PAGE_SIZE, TARGET_RATIO)
 
     temperature_sizes = [len(p) for p in partitions]
     temperature_sizes.sort(reverse=True)
