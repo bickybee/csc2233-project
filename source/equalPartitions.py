@@ -8,6 +8,7 @@ from traceUtils import sorted_page_counts
 DEFAULT_TRACE_FOLDER_PATH = '../data/formatted/'
 PAGE_SIZE = 8
 TARGET_RATIO = 2
+MAX_N = 256
 
 def equalize_partitions_loose(trace):
     sorted_counts = sorted_page_counts(trace, 8)
@@ -19,7 +20,7 @@ def equalize_partitions_loose(trace):
 
     total_space = sum(temperature_sizes)
     min_N = len(partitions)
-    max_N = 24
+    max_N = MAX_N
     results = {}
     N = min_N
     div = 2
@@ -63,7 +64,7 @@ def equalize_partitions_tight(trace):
     counts = [page_count for page_count in all_page_counts if page_count[1] != 0]
     num_pages = len(counts)
 
-    for n in range(2, 25):
+    for n in range(2, MAX_N):
         partition_size = math.ceil(num_pages / n)
         partitions = [counts[i : i + partition_size] for i in range(0, num_pages, partition_size)]
         ratios = [p[0][1] / p[-1][1] for p in partitions]
