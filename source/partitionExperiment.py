@@ -46,9 +46,9 @@ def create_partitions(sorted_counts, max_count, page_size, target_ratio):
         # add all sectors from this page to the current partition
         partitions[-1].append((page_address, count))
 
-    # give dead sectors their own partition
-    dead_pages = sorted_counts[dead_pages_index:]
-    partitions.append(dead_pages)
+    # DO NOT give dead sectors their own partition
+    # dead_pages = sorted_counts[dead_pages_index:]
+    # partitions.append(dead_pages)
 
     return partitions
 
@@ -116,26 +116,26 @@ def run_partition_experiment_1(traces_dict):
     for trace_name, trace in traces_dict.items():
         print(trace_name)
          # get and sort sector write counts
-        page_counts = compute_page_write_counts(trace, page_sizes.DEFAULT.value)
+        page_counts = compute_page_write_counts(trace, page_sizes.FOUR_KB.value)
         sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True) # returns list of tuples
-        results[trace_name] = compute_ideal_partitions(sorted_counts, page_sizes.DEFAULT.value)
+        results[trace_name] = compute_ideal_partitions(sorted_counts, page_sizes.FOUR_KB.value)
 
     return results
 
 # compute best ratio given a max partitioning N for all traces
 def run_partition_experiment_2(traces_dict):
-    results = dict.fromkeys(EXPERIMENT_PARTITION_NUMS, [])
+    results = dict((k, []) for k in EXPERIMENT_PARTITION_NUMS)
 
     for trace_name, trace in traces_dict.items():
         print(trace_name)
 
-        page_counts = compute_page_write_counts(trace, page_sizes.DEFAULT.value)
+        page_counts = compute_page_write_counts(trace, page_sizes.FOUR_KB.value)
         sorted_counts = sorted(page_counts.items(), key=operator.itemgetter(1), reverse=True)
 
         for partition_num in EXPERIMENT_PARTITION_NUMS:
             print(str(partition_num) + " partitions")
 
-            result = compute_minimum_frequency(sorted_counts, page_sizes.DEFAULT.value, partition_num)
+            result = compute_minimum_frequency(sorted_counts, page_sizes.FOUR_KB.value, partition_num)
             results[partition_num].append(result)
 
     return results
@@ -195,11 +195,9 @@ def run_partition_experiments(trace_folder_path):
 
     results3, results3avgs = run_partition_experiment_3(traces)
     df3 = pandas.DataFrame(results3)
-    df3.to_csv('results3_take2.csv')
+    df3.to_csv('results3.csv')
     df3avgs = pandas.DataFrame(results3avgs)
     df3avgs.to_csv('results3avgs.csv')
-    df3maxs = pandas.DataFrame(results3avgs)
-    df3maxs.to_csv('results3maxs.csv')
 
 
 if __name__ == "__main__":

@@ -29,3 +29,8 @@ def compute_page_write_counts(trace, page_size):
             page_write_counts[page] += 1
 
     return page_write_counts
+
+def sorted_page_counts(trace, page_size):
+    counts = compute_page_write_counts(trace, page_size)
+    sorted_counts = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
+    return sorted_counts
