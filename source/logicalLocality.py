@@ -43,6 +43,7 @@ def compute_spatial_locality_probability(trace, page_size):
     hit_number = 0
     hits = []
 
+    print("Calculating logical locality for: " + DEFAULT_TRACE_PATH)
     t = 0
     for i in range(9):
         d = 0
