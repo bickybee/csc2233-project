@@ -1,3 +1,5 @@
+# some utils doing operations on the traces using pandas
+
 import pandas
 import operator
 import math
@@ -38,6 +40,7 @@ def sorted_page_counts(trace, page_size):
     sorted_counts = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_counts
 
+# finding some generic stats about the traces
 def write_stats(trace, page_size):
     writes = find_completed_writes(trace)
     num_writes = len(writes)
@@ -53,13 +56,8 @@ def write_stats(trace, page_size):
     return num_writes, max_count, max_update_freq
 
 if __name__ == "__main__":
-    # trace = pandas.read_csv('../data/formatted/workloada_trace_f2fs.csv')
-    # death_time_deviation_experiment(trace)
-    results = {}
 
     for entry in os.scandir(TRACE_FOLDER_PATH):
         print(entry.name)
         trace = pandas.read_csv(TRACE_FOLDER_PATH + entry.name)
         write_stats(trace, PAGE_SIZE)
-        # df = pandas.DataFrame(results)
-        # df.to_csv('results6.csv')

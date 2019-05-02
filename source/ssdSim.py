@@ -1,4 +1,4 @@
-# SUPER INCOMPLETE did not end up being used!
+# INCOMPLETE did not end up being used!
 
 import math
 from enum import Enum

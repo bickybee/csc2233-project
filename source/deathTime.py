@@ -1,3 +1,5 @@
+# experiments regarding death time deviation
+
 import pandas
 import math
 import os
@@ -60,6 +62,7 @@ def partition_by_death_times(trace, num_partitions):
 def compute_partition_death_time_deviations(trace, partitions):
     print('boop')
 
+# used to assist in the ssd-simulation process of the experiment
 # page_map[address] = (partition_index, [death_time_0,...,death_time_n])
 def create_page_map(trace, partitions):
     # trace_end_time = 5000
@@ -80,7 +83,7 @@ def create_page_map(trace, partitions):
     
     return page_map
 
-
+# the experiment!
 def death_time_deviation_experiment(trace):
 
     max_time = find_completed_writes(trace)['timestamp'].max()
@@ -142,13 +145,16 @@ def death_time_deviation_experiment(trace):
             stdevs_p.append(statistics.stdev(b))
         # print("max: %d" % max(stdevs[i]))
         # print("medians: %d" % statistics.median(stdevs[i]))
-        # avg_stdevs.append(round(statistics.mean(stdevs_p[i])))
+        avg_stdevs.append(round(statistics.mean(stdevs_p[i])))
     print("partitioned avg: %d" % statistics.mean(stdevs_p))
+    print("avg stdevs:")
+    print(avg_stdevs)
 
     for b in ssd_non_partitioned:
         stdevs_np.append(statistics.stdev(b))
     
     print("nonpartitioned avg: %d" % statistics.mean(stdevs_np))
+
 
 
 if __name__ == "__main__":

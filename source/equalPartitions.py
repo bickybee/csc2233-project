@@ -1,3 +1,5 @@
+# experiments regarding equal PU sizes and excess space curves
+
 import math
 import os
 import sys
@@ -5,11 +7,13 @@ import pandas
 from partitionExperiment import create_partitions
 from traceUtils import sorted_page_counts
 
-DEFAULT_TRACE_FOLDER_PATH = '../data/formatted/'
+DEFAULT_TRACE_FOLDER_PATH = '../data/formatted/' # trace source folder
 PAGE_SIZE = 8
 TARGET_RATIO = 2
 MAX_N = 256
 
+# divide partitions equally but leave extra space to maintain f_ratio <= 2
+# results are the % excess space
 def equalize_partitions_loose(trace):
     sorted_counts = sorted_page_counts(trace, 8)
     max_count = sorted_counts[0][1]
@@ -57,6 +61,8 @@ def equalize_partitions_loose(trace):
 
     return results
 
+# order writes by temperature then divide them equally
+# wastes no space, results in very high fratio!
 def equalize_partitions_tight(trace):
     results = {}
 
@@ -72,7 +78,7 @@ def equalize_partitions_tight(trace):
 
     return results
 
-
+# run experiment on all traces in given folder
 def run_experiment(trace_folder_path):
 
     results_loose = {}

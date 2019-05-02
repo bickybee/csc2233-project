@@ -1,3 +1,5 @@
+# experiments regarding temperature partitions from the streetlight paper
+
 import pandas
 import operator
 import sys
@@ -24,7 +26,7 @@ class page_sizes(Enum):
 EXPERIMENT_PARTITION_NUMS = [2, 4, 8, 12, 16, 24]
 EXPERIMENT_PAGE_SIZES = [page_sizes.DEFAULT, page_sizes.FOUR_KB, page_sizes.SIXTEEN_KB, page_sizes.SIXTY_FOUR_KB]
 
-# greedy partitioning scheme!
+# greedy partitioning scheme to generate partitions with a f_ratio that is at MOST the target ratio
 def create_partitions(sorted_counts, max_count, page_size, target_ratio):
     current_max = max_count
     dead_pages_index = -1
@@ -52,10 +54,9 @@ def create_partitions(sorted_counts, max_count, page_size, target_ratio):
 
     return partitions
 
+# find partitions for f_ratio <= 2
 def compute_ideal_partitions(sorted_counts, page_size):
-    # init vars for partition generation loop
     max_count = sorted_counts[0][1]
-
     partitions = create_partitions(sorted_counts, max_count, page_size, DEFAULT_TARGET_RATIO)
     num_partitions = len(partitions)
 
@@ -108,7 +109,7 @@ def compute_minimum_frequency(sorted_counts, page_size, max_num_partitions):
 
     return best_ratio
 
-# compute sector partitions for all traces
+# compute sector partitions for f_r <= 2 for all traces
 def run_partition_experiment_1(traces_dict):
     print("EXPERIMENT 1")
     results = {}
