@@ -21,5 +21,5 @@ For the following scripts, the trace source folder can be passed as a command-li
     - results5.csv: frequency ratio for just splitting up partitions equally, naively (bad results, not discussed in paper)
 - deathTimes.py
   - Outputs relate to the death time devation experiments
-    - experiments resulted in less data, so was directly output to the console
+    - data is directly output to the console
     
