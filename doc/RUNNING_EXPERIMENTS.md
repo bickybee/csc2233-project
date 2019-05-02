@@ -7,7 +7,7 @@ After setting up the pipenv environment, navigate to the source folder and run s
 pipenv run python script_name.py
 ```
 
-For the following scripts, the trace source folder can be passed as a command-line argument, but defaults to our data/formatted folder. See the files in that folder for trace formatting reference-- we added column headers and removed excess blkparse data from the ends of the outputs.
+For the following scripts, the trace source folder can be passed as a command-line argument, but defaults to our data/formatted folder. See the files in that folder for trace formatting reference-- we added column headers and removed excess data from the ends of the blkparse outputs.
 
 - partitionExperiments.py
   - Outputs relate to the temperature partition and access granularity experiments
