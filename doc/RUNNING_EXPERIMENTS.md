@@ -19,7 +19,7 @@ For the following scripts, the trace source folder can be passed as a command-li
   - Outputs relate to the equal partitioning experiments (excess page curves)
     - results4.csv: percent of excess pages for equal partition sizes (as discussed in the paper)
     - results5.csv: frequency ratio for just splitting up partitions equally, naively (bad results, not discussed in paper)
-- deathTimes.py
+- deathTime.py
   - Outputs relate to the death time devation experiments
     - data is directly output to the console
     
