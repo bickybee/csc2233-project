@@ -1,9 +1,12 @@
 import pandas
 import operator
-import sys
 import math
+import statistics
 import os
-from enum import Enum
+import sys
+
+TRACE_FOLDER_PATH = '../data/formatted/'
+PAGE_SIZE = 8
 
 def find_completed_writes(trace):
     writes = trace.loc[trace['operation'].str.contains('W')]
@@ -34,3 +37,29 @@ def sorted_page_counts(trace, page_size):
     counts = compute_page_write_counts(trace, page_size)
     sorted_counts = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_counts
+
+def write_stats(trace, page_size):
+    writes = find_completed_writes(trace)
+    num_writes = len(writes)
+    
+    write_counts = compute_page_write_counts(trace, page_size).values()
+    write_counts = [c for c in write_counts if c > 0]
+    max_count = max(write_counts)
+    median_count = statistics.median(write_counts)
+    max_update_freq = max_count / num_writes
+
+    print("total: %d, max: %d, max freq: %f" % (num_writes, max_count, max_update_freq))
+
+    return num_writes, max_count, max_update_freq
+
+if __name__ == "__main__":
+    # trace = pandas.read_csv('../data/formatted/workloada_trace_f2fs.csv')
+    # death_time_deviation_experiment(trace)
+    results = {}
+
+    for entry in os.scandir(TRACE_FOLDER_PATH):
+        print(entry.name)
+        trace = pandas.read_csv(TRACE_FOLDER_PATH + entry.name)
+        write_stats(trace, PAGE_SIZE)
+        # df = pandas.DataFrame(results)
+        # df.to_csv('results6.csv')
