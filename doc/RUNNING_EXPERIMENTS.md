@@ -21,5 +21,8 @@ For the following scripts, the trace source folder can be passed as a command-li
     - results5.csv: frequency ratio for just splitting up partitions equally, naively (bad results, not discussed in paper)
 - deathTime.py
   - Outputs relate to the death time devation experiments
-    - data is directly output to the console
-    
+    - data is directly printed to the console
+- logicalLocality.py
+  - Outputs relate to the logical locality experiments
+    - DEFAULT_TRACE_PATH must point to the formatted trace (already set to Workload F, f2fs)
+    - data is directly printed to the console
