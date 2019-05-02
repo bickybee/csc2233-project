@@ -4,6 +4,9 @@ import sys
 import math
 from enum import Enum
 
+# Note: it might take a while to run!
+
+
 DEFAULT_TRACE_PATH = '../data/formatted/workloadf_trace_f2fs.csv'
 
 
@@ -41,9 +44,9 @@ def compute_spatial_locality_probability(trace, page_size):
     hits = []
 
     t = 0
-    for i in range(21):
-        d = 128
-        for j in range(1):
+    for i in range(9):
+        d = 0
+        for j in range(9):
             hit_number = 0
             for row in time_trace.itertuples():
                 #time_hit = False
@@ -72,7 +75,7 @@ def compute_spatial_locality_probability(trace, page_size):
             row = {"Time": t, "Distance": d, "Probability": probability}
             print(row)
             probability_list.append(row.values())
-            d += 0
+            d += 32
         t += 250
 
     #time_trace['hit'] = hits
@@ -80,6 +83,7 @@ def compute_spatial_locality_probability(trace, page_size):
 
     df = pandas.DataFrame(probability_list, columns=['Time', 'Distance','Probability'])
     #df.to_csv('C:/Users/scott/PycharmProjects/graph_locality/graph_locality_data/test6.csv')
+    print(df)
     return df
 
 if __name__ == "__main__":
