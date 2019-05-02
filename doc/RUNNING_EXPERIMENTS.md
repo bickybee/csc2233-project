@@ -26,3 +26,6 @@ For the following scripts, the trace source folder can be passed as a command-li
   - Outputs relate to the logical locality experiments
     - DEFAULT_TRACE_PATH must point to the formatted trace (already set to Workload F, f2fs)
     - data is directly printed to the console
+- graphingUtils.py
+  - Outputs relate to logical locality graphs
+    - graphs are generated using pylot; the graphs will be generated in a separate window
