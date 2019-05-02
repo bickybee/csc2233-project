@@ -3,6 +3,7 @@
 import pandas
 import math
 import os
+import sys
 import operator
 import statistics
 from partitionExperiment import create_partitions, compute_minimum_frequency
@@ -11,7 +12,7 @@ from traceUtils import find_completed_writes, compute_max_sector_number, sorted_
 PAGE_SIZE = 8
 BLOCK_SIZE = 512
 PAGES_PER_BLOCK = BLOCK_SIZE / PAGE_SIZE
-TRACE_FOLDER_PATH = '../data/formatted/'
+DEFAULT_TRACE_FOLDER_PATH = '../data/formatted/'
 
 def find_page_write_times(trace, page_size):
     writes = find_completed_writes(trace)
@@ -42,6 +43,7 @@ def sort_by_death_time(trace):
 
     return death_times
 
+# simple partitioning that creates divisions at largest gaps in ordered death times
 def partition_by_death_times(trace, num_partitions):
     death_times = sort_by_death_time(trace)
 
@@ -58,9 +60,6 @@ def partition_by_death_times(trace, num_partitions):
     boundary_indices.append(len(death_times) - 1)
     # partition!
     partitions = [death_times[boundary_indices[i] : boundary_indices[i + 1]] for i in range(len(boundary_indices) - 1)]
-
-def compute_partition_death_time_deviations(trace, partitions):
-    print('boop')
 
 # used to assist in the ssd-simulation process of the experiment
 # page_map[address] = (partition_index, [death_time_0,...,death_time_n])
@@ -140,14 +139,15 @@ def death_time_deviation_experiment(trace):
     avg_stdevs = []
     for i, p in enumerate(ssd_partitioned):
         # print("partition %d:" % i)
-        # stdevs_p.append([])
+        stdevs_p.append([])
         for b in p:
-            stdevs_p.append(statistics.stdev(b))
+            stdevs_p[i].append(statistics.stdev(b))
         # print("max: %d" % max(stdevs[i]))
         # print("medians: %d" % statistics.median(stdevs[i]))
         avg_stdevs.append(round(statistics.mean(stdevs_p[i])))
+    stdevs_p = [s for p in stdevs_p for s in p] # flatten list
     print("partitioned avg: %d" % statistics.mean(stdevs_p))
-    print("avg stdevs:")
+    print("avg stdevs per partition:")
     print(avg_stdevs)
 
     for b in ssd_non_partitioned:
@@ -158,15 +158,21 @@ def death_time_deviation_experiment(trace):
 
 
 if __name__ == "__main__":
-    # trace = pandas.read_csv('../data/formatted/workloada_trace_f2fs.csv')
-    # death_time_deviation_experiment(trace)
+    
+    folder_path = DEFAULT_TRACE_FOLDER_PATH
+
+    if (len(sys.argv) == 2):
+        folder_path = sys.argv[1]
+
     results = {}
 
-    for entry in os.scandir(TRACE_FOLDER_PATH):
+    for entry in os.scandir(folder_path):
+        print('------------')
         print(entry.name)
-        trace = pandas.read_csv(TRACE_FOLDER_PATH + entry.name)
-        avg_stdevs = death_time_deviation_experiment(trace)
-        results[entry.name] = avg_stdevs
+        trace = pandas.read_csv(folder_path + entry.name)
+        death_time_deviation_experiment(trace)
+        # avg_stdevs = death_time_deviation_experiment(trace)
+        # results[entry.name] = avg_stdevs
         # df = pandas.DataFrame(results)
         # df.to_csv('results6.csv')
 
