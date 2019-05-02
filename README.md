@@ -1,5 +1,7 @@
 # csc2233-project
 
+See the DOCS folder for more instructions! Here are some general environment instructions.
+
 Using pipenv as a dependency & virtual environment manager.
 
 Install all existing dependencies using:
